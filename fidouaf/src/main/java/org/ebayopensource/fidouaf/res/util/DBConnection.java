@@ -97,6 +97,22 @@ public class DBConnection {
         }
     }
 
+//    public Integer authenticationRecordCount(AuthenticatorRecord ar) {
+//        try (
+//                Statement st = this.con.createStatement())
+//        {
+//            ResultSet rs = st.executeQuery(this.prepareAuthenticatorRecord(ar));
+//            if (rs.next()) {
+//                return rs.getInt(1);
+//            }
+//
+//        }catch (SQLException ex) {
+//            lgr.log(Level.SEVERE, ex.getMessage(), ex);
+//            return 0;
+//        }
+//        return 0;
+//    }
+
     // Private
 
     private DBConnection(String host, String port, String user, String dbName, String password) {
