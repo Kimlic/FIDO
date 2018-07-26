@@ -1,0 +1,11 @@
+.DS_Store
+gradle
+.gradle
+build
+.classes
+.idea
+.idea/*
+*.iml
+local.properties
+fidouaf/out/
+fido-uaf-core/out/
