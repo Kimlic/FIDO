@@ -84,37 +84,36 @@ public class DBConnection {
         }
     }
 
-    boolean authenticationRecordCount(AuthenticatorRecord ar) {
+//    boolean authenticationRecordCount(AuthenticatorRecord ar) {
+//        try (Statement st = mConnection.createStatement()) {
+//            String query = prepareAuthenticatorRecord(ar);
+//            ResultSet result = st.executeQuery(query);
+//
+//            if (result.next())
+//                return result.getString(1) == null || result.getString(1).isEmpty();
+//
+//            return false;
+//        } catch (SQLException ex) {
+//            mLgr.log(Level.SEVERE, ex.getMessage(), ex);
+//
+//            return false;
+//        }
+//    }
+
+    int authenticationRecordCount(AuthenticatorRecord ar) {
         try (Statement st = mConnection.createStatement()) {
-            String query = prepareAuthenticatorRecord(ar);
-            ResultSet result = st.executeQuery(query);
+            ResultSet rs = st.executeQuery(this.prepareAuthenticatorRecord(ar));
 
-            if (result.next())
-                return result.getString(1) == null || result.getString(1).isEmpty();
-
-            return false;
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
         } catch (SQLException ex) {
             mLgr.log(Level.SEVERE, ex.getMessage(), ex);
-
-            return false;
+            return 0;
         }
-    }
 
-//    public Integer authenticationRecordCount(AuthenticatorRecord ar) {
-//        try (
-//                Statement st = this.con.createStatement())
-//        {
-//            ResultSet rs = st.executeQuery(this.prepareAuthenticatorRecord(ar));
-//            if (rs.next()) {
-//                return rs.getInt(1);
-//            }
-//
-//        }catch (SQLException ex) {
-//            lgr.log(Level.SEVERE, ex.getMessage(), ex);
-//            return 0;
-//        }
-//        return 0;
-//    }
+        return 0;
+    }
 
     // Private
 

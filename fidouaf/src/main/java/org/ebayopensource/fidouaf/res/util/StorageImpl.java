@@ -42,11 +42,12 @@ public class StorageImpl implements StorageInterface {
         if (records == null || records.length == 0)
             return;
 
-        for (RegistrationRecord rr : records) {
-            if (mPDB.authenticationRecordCount(rr.authenticator))
+        for (RegistrationRecord record : records) {
+            if (mDB.containsKey(record.authenticator.toString()))
                 throw new DuplicateKeyException();
 
-            mPDB.saveRegistrationRecord(rr);
+            mDB.put(record.authenticator.toString(), record);
+            mPDB.saveRegistrationRecord(record);
         }
     }
 
