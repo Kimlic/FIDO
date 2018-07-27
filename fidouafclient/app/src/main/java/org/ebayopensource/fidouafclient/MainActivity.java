@@ -16,14 +16,10 @@
 
 package org.ebayopensource.fidouafclient;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.pm.ResolveInfo;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -32,379 +28,293 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-
-import org.ebayopensource.fido.uaf.msg.RegistrationRequest;
 import org.ebayopensource.fido.uaf.msg.client.UAFIntentType;
-import org.ebayopensource.fidouafclient.curl.Curl;
 import org.ebayopensource.fidouafclient.op.Auth;
 import org.ebayopensource.fidouafclient.op.Dereg;
 import org.ebayopensource.fidouafclient.op.OpUtils;
 import org.ebayopensource.fidouafclient.op.Reg;
-import org.ebayopensource.fidouafclient.util.Endpoints;
 import org.ebayopensource.fidouafclient.util.Preferences;
 
-import java.io.ByteArrayInputStream;
-import java.security.MessageDigest;
-import java.security.cert.Certificate;
-import java.security.cert.CertificateFactory;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.logging.Logger;
-
-import static android.R.id.message;
+import java.util.Objects;
 
 public class MainActivity extends Activity {
 
-    private static final int REG_ACTIVITY_RES_3 = 3;
-    private static final int AUTH_ACTIVITY_RES_5 = 5;
-    private static final int DEREG_ACTIVITY_RES_4 = 4;
+  // Constants
 
-    // XXX unify loggers
-    private static final String TAG = MainActivity.class.getSimpleName();
+  private static final String LOG_TAG = MainActivity.class.getSimpleName();
 
-    private static final Logger logger = Logger.getLogger(MainActivity.class.getName());
+  private static final int REG_RESULT = 3;
+  private static final int DEREG_RESULT = 4;
+  private static final int AUTH_RESULT = 5;
 
-    private Gson gson = new Gson();
-    private TextView facetID;
-    private TextView msg;
-    private TextView title;
-    private TextView username;
+  private static final String ACCOUNT_ADDRESS = "0xdfbc3489041d9c3c728b4179c3c358c143c7e98e";
 
-    private Reg reg = new Reg();
-    private Dereg dereg = new Dereg();
-    private Auth auth = new Auth();
-    private int authenticatorIndex = 1;
+  // Variables
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+  private TextView mMsgTextView;
+  private TextView mTitleTextView;
+  private TextView mFacetTextView;
+  private EditText mEditTextName;
 
-        if (Preferences.getSettingsParam("keyID").equals("")) {
-            setContentView(R.layout.activity_main);
-            findFields();
-        } else {
-            setContentView(R.layout.activity_registered);
-            findFields();
-            username.setText(Preferences.getSettingsParam("username"));
-        }
+  private Reg mReg = new Reg();
+  private Dereg mDereg = new Dereg();
+  private Auth mAuth = new Auth();
+
+  // Life
+
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    boolean isNotRegistered = Preferences.getSettingsParam("keyID").equals("");
+    setContentView(isNotRegistered ? R.layout.activity_main : R.layout.activity_registered);
+
+    findFields();
+    assignUserAddress();
+    assignFacetId();
+  }
+
+  @Override
+  public boolean onCreateOptionsMenu(Menu menu) {
+    getMenuInflater().inflate(R.menu.main, menu);
+
+    return true;
+  }
+
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item) {
+    int id = item.getItemId();
+
+    if (id == R.id.action_discover)
+      info(this.getWindow().getCurrentFocus());
+
+    return super.onOptionsItemSelected(item);
+  }
+
+  @SuppressLint("SetTextI18n")
+  protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    if (resultCode == RESULT_CANCELED) {
+      userCancelled();
+      Log.e(LOG_TAG, "USER CANCELLED");
+      return;
     }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-
-
+    if (resultCode != RESULT_OK) {
+      Log.e(LOG_TAG, "RESULT NOT OK");
+      return;
     }
 
-    private void findFields (){
-        msg = (TextView) findViewById(R.id.textViewMsg);
-        title = (TextView) findViewById(R.id.textViewTitle);
-        username = (TextView) findViewById(R.id.textUsername);
-    }
-	
-    public void facetIDRequest(View view) {
-        String facetIDval = "";
-        try {
-            facetIDval = getFacetID(this.getPackageManager().getPackageInfo(this.getPackageName(), this.getPackageManager().GET_SIGNATURES));
-            Log.d("facetID: ", facetIDval);
-        } catch (NameNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        facetID = (TextView) findViewById(R.id.textViewFacetID);
-        facetID.setText(facetIDval);
+    Object[] array = Objects.requireNonNull(data.getExtras()).keySet().toArray();
+    StringBuilder extras = new StringBuilder();
+    extras.append("[resultCode=").append(resultCode).append("]");
+
+    for (Object obj : array) {
+      extras.append("[").append(obj).append("=");
+      extras.append("").append(data.getExtras().get((String) obj)).append("]");
     }
 
-    public void info(View view) {
+    Log.e(LOG_TAG, "EXTRAS: " + extras.toString());
 
-        title.setText("Discovery info");
-        String asmRequest = "{\"asmVersion\":{\"major\":1,\"minor\":0},\"requestType\":\"GetInfo\"}";
-        Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
-        i.addCategory("android.intent.category.DEFAULT");
-        i.setType("application/fido.uaf_client+json");
+    mTitleTextView.setText("extras=" + extras.toString());
 
-        List<ResolveInfo> queryIntentActivities = this.getPackageManager().queryIntentActivities(i, PackageManager.GET_META_DATA);
-
-//		i = new Intent ("com.sec.android.fido.org.ebayopensource.fido.uaf.asm.AsmActivity");
-//		i.setType("application/fido.uaf_asm+json");
-
-        Bundle data = new Bundle();
-        data.putString("message", OpUtils.getEmptyUafMsgRegRequest());
-        data.putString("UAFIntentType", UAFIntentType.DISCOVER.name());
-        i.putExtras(data);
-//		i.setComponent(new ComponentName(queryIntentActivities.get(0).activityInfo.packageName, queryIntentActivities.get(0).activityInfo.name));
-        startActivityForResult(i, 1);
-        return;
+    switch (requestCode) {
+      case 1: optionOne(data); return;
+      case 2: optionTwo(data); return;
+      case REG_RESULT: userReged(data, extras); return;
+      case DEREG_RESULT: userDereged(data, extras); return;
+      case AUTH_RESULT: userAuthed(data);
     }
+  }
 
-    public void regRequest(View view) {
-//        String username = Preferences.getSettingsParam("username");
-        String username = ((EditText) findViewById(R.id.editTextName)).getText().toString();
-        if (username.equals ("")) {
-            msg.setText("Username cannot be empty.");
-            return;
-        }
-        Preferences.setSettingsParam("username", username);
+  private void optionOne(Intent data) {
+    Log.e(LOG_TAG, "OPTION 1");
+    String asmResponse = data.getStringExtra("message");
+    String discoveryData = data.getStringExtra("discoveryData");
+    mMsgTextView.setText(String.format("{message}%s{discoveryData}%s", asmResponse, discoveryData));
+  }
 
+  private void optionTwo(Intent data) {
+    Log.e(LOG_TAG, "OPTION 2");
+    String asmResponse = data.getStringExtra("message");
+    mMsgTextView.setText(asmResponse);
+    mDereg.recordKeyId(asmResponse);
+  }
 
-        title.setText("Registration operation executed, Username = " + username);
+  private void userReged(Intent data, StringBuilder extras) {
+    Log.e(LOG_TAG, "OPTION 3");
+    try {
+      String uafMessage = data.getStringExtra("message");
+      mMsgTextView.setText(uafMessage);
 
-        Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
-        i.addCategory("android.intent.category.DEFAULT");
+      String res = mReg.clientSendRegResponse(uafMessage);
+      setContentView(R.layout.activity_registered);
 
-        i.setType("application/fido.uaf_client+json");
+      findFields();
 
-        List<ResolveInfo> queryIntentActivities = this.getPackageManager().queryIntentActivities(i, PackageManager.MATCH_DEFAULT_ONLY);
-        String facetID = "";
-        try {
-            facetID = getFacetID(this.getPackageManager().getPackageInfo(this.getPackageName(), this.getPackageManager().GET_SIGNATURES));
-            title.setText("facetID=" + facetID);
-        } catch (NameNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        String regRequest = reg.getUafMsgRegRequest(username, facetID, this);
-        Log.d(TAG, "UAF reg request: " + regRequest);
-        title.setText("{regRequest}" + regRequest);
-
-        Bundle data = new Bundle();
-        data.putString("message", regRequest);
-        data.putString("UAFIntentType", UAFIntentType.UAF_OPERATION.name());
-        data.putString("channelBindings", regRequest);
-        i.putExtras(data);
-
-//		i.setComponent(new ComponentName(queryIntentActivities.get(0).activityInfo.packageName, queryIntentActivities.get(0).activityInfo.name));
-        startActivityForResult(i, REG_ACTIVITY_RES_3);
+      mTitleTextView.setText(String.format("extras=%s", extras.toString()));
+      mMsgTextView.setText(res);
+      mEditTextName.setText(Preferences.getSettingsParam("username"));
+    } catch (Exception e) {
+      mMsgTextView.setText(String.format("Registration operation failed.\n%s", e));
     }
+  }
 
-    private String getFacetID(PackageInfo paramPackageInfo) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(paramPackageInfo.signatures[0].toByteArray());
-            Certificate certificate = CertificateFactory.getInstance("X509").generateCertificate(byteArrayInputStream);
-            MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
-            String facetID = "android:apk-key-hash:" + Base64.encodeToString(((MessageDigest) messageDigest).digest(certificate.getEncoded()), 3);
-            return facetID;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return null;
+  private void userAuthed(Intent data) {
+    Log.e(LOG_TAG, "OPTION 5");
+    String uafMessage = data.getStringExtra("message");
+
+    if (uafMessage == null)
+      return;
+
+    mMsgTextView.setText(uafMessage);
+
+    String res = mAuth.clientSendResponse(uafMessage);
+    mMsgTextView.setText(res);
+  }
+
+  private void userDereged(Intent data, StringBuilder extras) {
+    Log.e(LOG_TAG, "OPTION 4");
+    Preferences.setSettingsParam("keyID", "");
+
+    setContentView(R.layout.activity_main);
+
+    findFields();
+
+    mTitleTextView.setText(String.format("extras=%s", extras.toString()));
+    String message = data.getStringExtra("message");
+
+    if (message != null) {
+      String out = "Dereg done. Client msg=" + message;
+      out = out + ". Sent=" + mDereg.clientSendDeregResponse(message);
+      mMsgTextView.setText(out);
+    } else {
+      String deregMsg = Preferences.getSettingsParam("deregMsg");
+      String out = "Dereg done. Client msg was empty. Dereg msg = " + deregMsg;
+      out = out + ". Response=" + mDereg.post(deregMsg);
+      mMsgTextView.setText(out);
     }
+  }
 
-    public void dereg(View view) {
+  // Actions
 
-        title.setText("Deregistration operation executed");
-        String uafMessage = dereg.getUafMsgRequest();
-        Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
-        i.addCategory("android.intent.category.DEFAULT");
-        i.setType("application/fido.uaf_client+json");
+  public void assignUserAddress() {
+    mEditTextName.setText(ACCOUNT_ADDRESS);
+  }
 
-        List<ResolveInfo> queryIntentActivities = this.getPackageManager().queryIntentActivities(i, PackageManager.MATCH_DEFAULT_ONLY);
+  public void assignFacetId() {
+    String facetId = UafService.getFacetID(this);
+    mFacetTextView.setText(facetId);
+  }
 
-        Bundle data = new Bundle();
-        data.putString("message", uafMessage);
-        data.putString("UAFIntentType", "UAF_OPERATION");
-        data.putString("channelBindings", uafMessage);
-        i.putExtras(data);
-        startActivityForResult(i, DEREG_ACTIVITY_RES_4);
-    }
+  @SuppressLint("SetTextI18n")
+  public void info(View view) {
+    Log.e(LOG_TAG, "INFO ACTION");
 
-    public void authRequest(View view) {
-        title.setText("Authentication operation executed");
-        String facetID = "";
-        try {
-            facetID = getFacetID(this.getPackageManager().getPackageInfo(this.getPackageName(), this.getPackageManager().GET_SIGNATURES));
-        } catch (NameNotFoundException e) {
-            e.printStackTrace();
-        }
-        String authRequest = auth.getUafMsgRequest(facetID,this,false);
-        Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
-        i.addCategory("android.intent.category.DEFAULT");
-        i.setType("application/fido.uaf_client+json");
-        Bundle data = new Bundle();
-        data.putString("message", authRequest);
-        data.putString("UAFIntentType", "UAF_OPERATION");
-        data.putString("channelBindings", authRequest);
-        i.putExtras(data);
-        startActivityForResult(i, AUTH_ACTIVITY_RES_5);
-    }
+    mTitleTextView.setText("Discovery info");
 
-    public void trxRequest(View view) {
-        title.setText("Authentication operation executed");
-        String facetID = "";
-        try {
-            facetID = getFacetID(this.getPackageManager().getPackageInfo(this.getPackageName(), this.getPackageManager().GET_SIGNATURES));
-        } catch (NameNotFoundException e) {
-            e.printStackTrace();
-        }
-        String authRequest = auth.getUafMsgRequest(facetID,this,true);
-        Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
-        i.addCategory("android.intent.category.DEFAULT");
-        i.setType("application/fido.uaf_client+json");
-        Bundle data = new Bundle();
-        data.putString("message", authRequest);
-        data.putString("UAFIntentType", "UAF_OPERATION");
-        data.putString("channelBindings", authRequest);
-        i.putExtras(data);
-        startActivityForResult(i, AUTH_ACTIVITY_RES_5);
-    }
+    Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
+    i.addCategory("android.intent.category.DEFAULT");
+    i.setType("application/fido.uaf_client+json");
 
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d(TAG, String.format("onActivityResult: requestCode=%d, resultCode=%d, data=%s",
-                requestCode, resultCode, new ArrayList<>(data.getExtras().keySet())));
+    Bundle data = new Bundle();
+    data.putString("message", OpUtils.getEmptyUafMsgRegRequest());
+    data.putString("UAFIntentType", UAFIntentType.DISCOVER.name());
+    i.putExtras(data);
+    startActivityForResult(i, 1);
+  }
 
-        if (data == null){
-            msg.setText("UAF Client didn't return any data. resultCode="+resultCode);
-            return;
-        }
+  // Private
 
-        Object[] array = data.getExtras().keySet().toArray();
-        StringBuffer extras = new StringBuffer();
-        extras.append("[resultCode="+resultCode+"]");
-        for (int i = 0; i < array.length; i++) {
-            extras.append("[" + array[i] + "=");
-//            if ("message".equals(array[i])) {
-//                continue;
-//            }
-            extras.append(""+data.getExtras().get((String) array[i]) + "]");
-        }
-        title.setText("extras=" + extras.toString());
+  @SuppressLint("SetTextI18n")
+  public void regRequestAction(View view) {
+    Log.e(LOG_TAG, "REG REQUEST ACTION");
 
-        if (requestCode == 1) {
-            if (resultCode == RESULT_OK) {
-                String asmResponse = data.getStringExtra("message");
-                Log.d(TAG, "UAF message: " + asmResponse);
+    String facetId = UafService.getFacetID(this);
+    Log.e(LOG_TAG, "facetId: " + facetId);
 
-                String discoveryData = data.getStringExtra("discoveryData");
-                msg.setText("{message}" + asmResponse + "{discoveryData}" + discoveryData);
-                //Prepare ReqResponse
-                //post to server
-            }
-            if (resultCode == RESULT_CANCELED) {
-                userCancelled();
-            }
-        }
-        if (requestCode == 2) {
-            if (resultCode == RESULT_OK) {
-                String asmResponse = data.getStringExtra("message");
-                Log.d(TAG, "UAF message: " + asmResponse);
-                msg.setText(asmResponse);
-                dereg.recordKeyId(asmResponse);
-                //Prepare ReqResponse
-                //post to server
-            }
-            if (resultCode == RESULT_CANCELED) {
-                userCancelled();
-            }
-        } else if (requestCode == REG_ACTIVITY_RES_3) {
-            if (resultCode == RESULT_OK) {
-                try {
-                    String uafMessage = data.getStringExtra("message");
-                    Log.d(TAG, "UAF message: " + message);
-                    msg.setText(uafMessage);
-                    //Prepare ReqResponse
-                    //post to server
-                    //	            String res = reg.sendRegResponse(asmResponse);
-                    String res = reg.clientSendRegResponse(uafMessage);
-                    setContentView(R.layout.activity_registered);
-                    findFields();
-                    title.setText("extras=" + extras.toString());
-                    msg.setText(res);
-                    username.setText(Preferences.getSettingsParam("username"));
-                } catch (Exception e){
-                    msg.setText("Registration operation failed.\n"+e);
-                }
-            }
-            if (resultCode == RESULT_CANCELED) {
-                userCancelled();
-            }
-        } else if (requestCode == DEREG_ACTIVITY_RES_4) {
-            if (resultCode == RESULT_OK) {
-                Preferences.setSettingsParam("keyID", "");
-                Preferences.setSettingsParam("username", "");
-                setContentView(R.layout.activity_main);
-                findFields();
-                title.setText("extras=" + extras.toString());
-                String message = data.getStringExtra("message");
-                Log.d(TAG, String.format("UAF message: [%s]", message));
-                if (message != null) {
-                    String out = "Dereg done. Client msg=" + message;
-                    out = out + ". Sent=" + dereg.clientSendDeregResponse(message);
-                    msg.setText(out);
-                } else {
-                    String deregMsg = Preferences.getSettingsParam("deregMsg");
-                    String out = "Dereg done. Client msg was empty. Dereg msg = " + deregMsg;
-                    out = out + ". Response=" + dereg.post(deregMsg);
-                    msg.setText(out);
+    String regRequest = mReg.getUafMsgRegRequest(ACCOUNT_ADDRESS, facetId, this);
+    Log.e(LOG_TAG, "message, channelBindings: " + regRequest);
 
-                }
+    String intentType = UAFIntentType.UAF_OPERATION.name();
+    Log.e(LOG_TAG, "UAFIntentType: " + intentType);
 
-            }
-            if (resultCode == RESULT_CANCELED) {
-                userCancelled();
-            }
-        } else if (requestCode == AUTH_ACTIVITY_RES_5) {
-            if (resultCode == RESULT_OK) {
-                String uafMessage = data.getStringExtra("message");
-                Log.d(TAG, "UAF message: " + uafMessage);
-                if (uafMessage != null) {
-                    msg.setText(uafMessage);
-                    //Prepare ReqResponse
-                    //post to server
-//	            String res = auth.sendAuthResponse(asmResponse);
-                    String res = auth.clientSendResponse(uafMessage);
-                    msg.setText("\n" + res);
-                }
-            }
-            if (resultCode == RESULT_CANCELED) {
-                userCancelled();
-            }
-        }
+    Bundle data = new Bundle();
+    data.putString("message", regRequest);
+    data.putString("UAFIntentType", intentType);
+    data.putString("channelBindings", regRequest);
 
-    }
+    Intent intent = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
+    intent.addCategory("android.intent.category.DEFAULT");
+    intent.setType("application/fido.uaf_client+json");
+    intent.putExtras(data);
+    startActivityForResult(intent, REG_RESULT);
+  }
 
-    private void userCancelled() {
-        String warnMsg = "User cancelled";
-        Log.w(TAG, warnMsg);
-        Toast.makeText(this, warnMsg, Toast.LENGTH_SHORT).show();
-    }
+  @SuppressLint("SetTextI18n")
+  public void dereg(View view) {
+    Log.e(LOG_TAG, "DEREG");
 
-    public RegistrationRequest getRegistrationRequest(String username) {
-        logger.info("  [UAF][1]Reg - getRegRequest  ");
-        String regReq = Curl.getInSeparateThread(Endpoints.getRegRequestEndpoint() + username);
-        logger.info("  [UAF][1]Reg - getRegRequest  : " + regReq);
-        return gson.fromJson(regReq, RegistrationRequest[].class)[0];
-    }
+    mTitleTextView.setText("Deregistration operation executed");
 
+    String uafMessage = mDereg.getUafMsgRequest();
+    Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
+    i.addCategory("android.intent.category.DEFAULT");
+    i.setType("application/fido.uaf_client+json");
 
-    public void deregRequest(View view) {
-        startActivity(new Intent("info.gazers.log.FidoActivity"));
-    }
+    Bundle data = new Bundle();
+    data.putString("message", uafMessage);
+    data.putString("UAFIntentType", "UAF_OPERATION");
+    data.putString("channelBindings", uafMessage);
+    i.putExtras(data);
+    startActivityForResult(i, DEREG_RESULT);
+  }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
-    }
+  @SuppressLint("SetTextI18n")
+  public void authRequest(View view) {
+    Log.e(LOG_TAG, "AUTH REQUEST");
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            startActivity(new Intent(
-                    "org.ebayopensource.fidouafclient.SettingsActivity"));
-        }
-        if (id == R.id.action_discover) {
-            info(this.getWindow().getCurrentFocus());
-        }
-        if (id == R.id.action_save_message) {
-            SaveMessageDialog.show(this, msg);
-        }
-        return super.onOptionsItemSelected(item);
-    }
+    mTitleTextView.setText("Authentication operation executed");
 
+    String authRequest = mAuth.getUafMsgRequest(UafService.getFacetID(this), this, false);
+    Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
+    i.addCategory("android.intent.category.DEFAULT");
+    i.setType("application/fido.uaf_client+json");
+    Bundle data = new Bundle();
+    data.putString("message", authRequest);
+    data.putString("UAFIntentType", "UAF_OPERATION");
+    data.putString("channelBindings", authRequest);
+    i.putExtras(data);
+    startActivityForResult(i, AUTH_RESULT);
+  }
+
+  @SuppressLint("SetTextI18n")
+  public void trxRequest(View view) {
+    Log.e(LOG_TAG, "TRX REQUEST");
+
+    mTitleTextView.setText("Authentication operation executed");
+
+    String authRequest = mAuth.getUafMsgRequest(UafService.getFacetID(this), this, true);
+
+    Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
+    i.addCategory("android.intent.category.DEFAULT");
+    i.setType("application/fido.uaf_client+json");
+    Bundle data = new Bundle();
+    data.putString("message", authRequest);
+    data.putString("UAFIntentType", "UAF_OPERATION");
+    data.putString("channelBindings", authRequest);
+    i.putExtras(data);
+    startActivityForResult(i, AUTH_RESULT);
+  }
+
+  private void userCancelled() {
+    Log.e(LOG_TAG, "USER CANCELLED");
+    Toast.makeText(this, "User cancelled", Toast.LENGTH_SHORT).show();
+  }
+
+  private void findFields() {
+    mMsgTextView = (TextView) findViewById(R.id.textViewMsg);
+    mTitleTextView = (TextView) findViewById(R.id.textViewTitle);
+    mEditTextName = (EditText) findViewById(R.id.editTextName);
+    mFacetTextView = (TextView) findViewById(R.id.textViewFacetID);
+  }
 }

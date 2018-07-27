@@ -31,129 +31,141 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 
 public class Reg {
-	
-	private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
 
-	public String getUafMsgRegRequest (String username, String facetId, Context context){
-		String serverResponse = getRegRequest(username);
-		return OpUtils.getUafRequest(serverResponse,facetId,context,false);
-	}
+  // Constants
 
-	public String getRegRequest (String username){
-		String url = Endpoints.getRegRequestEndpoint()+username;
-		return Curl.getInSeparateThread(url);
-	}
-	
-	public RegisterIn getRegIn(String username){
-		RegisterIn ret = new RegisterIn();
-		String url = Endpoints.getRegRequestEndpoint()+username;
-		String regRespFromServer = Curl.getInSeparateThread(url);
-		RegistrationRequest regRequest = null;
-		try{
-			regRequest = gson.fromJson(regRespFromServer, RegistrationRequest[].class)[0];
-			ret.appID = regRequest.header.appID;
-			ret.attestationType = 15879;
-			ret.finalChallenge = getFinalChalenge(regRequest);
-			ret.username = username;
-			freezeRegResponse(regRequest);
-		} catch (Exception e){
-			
-		}
-		
-		return ret;
-	}
-	
-	public String clientSendRegResponse (String uafMessage){
-		String serverResponse = OpUtils.clientSendRegResponse(uafMessage,Endpoints.getRegResponseEndpoint());
-		saveAAIDandKeyID(serverResponse);
-		return serverResponse;
-	}
-	
-	public String sendRegResponse (String regOut){
-		StringBuffer res = new StringBuffer();
-		res.append("{regOut}"+regOut);
-		String json = getRegResponseForSending(regOut);
-		res.append("{regResponse}"+json);
-		String headerStr = "Content-Type:Application/json Accept:Application/json";
-		res.append("{ServerResponse}");
-		String serverResponse = Curl.postInSeparateThread(Endpoints.getRegResponseEndpoint(), headerStr , json);
-		res.append(serverResponse);
-		saveAAIDandKeyID(serverResponse);
-		return res.toString();
-	}
-	
-	
-	private void saveAAIDandKeyID(String res) {
-		try{
-			JSONArray regRecord = new JSONArray(res);
-			JSONObject authenticator = regRecord.getJSONObject(0).getJSONObject("authenticator");
-			Preferences.setSettingsParam("AAID", authenticator.getString("AAID"));
-			Preferences.setSettingsParam("keyID", authenticator.getString("KeyID"));
-		} catch (Exception e){
-			e.printStackTrace();
-		}
-	}
+  private static final String LOG_TAG = Reg.class.getSimpleName();
 
-	public String getRegResponseForSending (String regOut){
-		String ret = null;
-		try{
-		RegistrationResponse regResponse = gson.fromJson(Preferences.getSettingsParam("regResponse"), RegistrationResponse.class);
-		JSONObject assertions = new JSONObject(regOut);
-		regResponse.assertions = new AuthenticatorRegistrationAssertion[1];
-		regResponse.assertions[0] = new AuthenticatorRegistrationAssertion();
-		regResponse.assertions[0].assertionScheme = assertions.getJSONObject("responseData").getString("assertionScheme");
-		regResponse.assertions[0].assertion = assertions.getJSONObject("responseData").getString("assertion");
-		RegistrationResponse[] forSending = new RegistrationResponse[1];
-		forSending[0] = regResponse;
-		return gson.toJson(forSending, RegistrationResponse[].class);
-		} catch (Exception e){
-			e.printStackTrace();
-		}
-		
-		return ret;
-	}
+  // Variables
 
-	private String getFinalChalenge(RegistrationRequest regRequest) {
-		FinalChallengeParams fcParams = new FinalChallengeParams();
-		fcParams.appID = regRequest.header.appID;
-		Preferences.setSettingsParam("appID", fcParams.appID);
-		fcParams.facetID = getFacetId();
-		fcParams.challenge = regRequest.challenge;
-		fcParams.channelBinding = new ChannelBinding();
-		fcParams.channelBinding.cid_pubkey = "";
-		fcParams.channelBinding.serverEndPoint = "";
-		fcParams.channelBinding.tlsServerCertificate = "";
-		fcParams.channelBinding.tlsUnique = "";
-		return Base64url.encodeToString(gson.toJson(
-				fcParams).getBytes());
-	}
+  private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
 
-	private String getFacetId() {
-		return "";
-	}
-	
-	public void freezeRegResponse (RegistrationRequest regRequest){
-		String json = gson.toJson(getRegResponse(regRequest), RegistrationResponse.class);
-		Preferences.setSettingsParam("regResponse", json);
-	}
-	
-	public RegistrationResponse getRegResponse (RegistrationRequest regRequest){
-		RegistrationResponse response = new RegistrationResponse();
-		
-		response.header = new OperationHeader();
-		response.header.serverData = regRequest.header.serverData;
-		response.header.appID = regRequest.header.appID;
-		response.header.op = regRequest.header.op;
-		response.header.upv = regRequest.header.upv;
-		response.fcParams = getFinalChalenge(regRequest);
-		
-		return response;
-	}
+  // Public
 
+  public String getUafMsgRegRequest(String accountAddress, String facetId, Context context) {
+    Log.e(LOG_TAG, "GET UAF MSG REG REQUEST");
+
+    String serverResponse = getRegRequest(accountAddress);
+    Log.e(LOG_TAG, "serverResponse: " + serverResponse);
+
+    return OpUtils.getUafRequest(serverResponse, facetId, context, false);
+  }
+
+  public RegisterIn getRegIn(String username) {
+    RegisterIn ret = new RegisterIn();
+    String url = Endpoints.getRegRequestEndpoint() + username;
+    String regRespFromServer = Curl.getInSeparateThread(url);
+    RegistrationRequest regRequest = null;
+    try {
+      regRequest = gson.fromJson(regRespFromServer, RegistrationRequest[].class)[0];
+      ret.appID = regRequest.header.appID;
+      ret.attestationType = 15879;
+      ret.finalChallenge = getFinalChalenge(regRequest);
+      ret.username = username;
+      freezeRegResponse(regRequest);
+    } catch (Exception ignored) {
+
+    }
+
+    return ret;
+  }
+
+  public String clientSendRegResponse(String uafMessage) {
+    String serverResponse = OpUtils.clientSendRegResponse(uafMessage, Endpoints.getRegResponseEndpoint());
+    saveAAIDandKeyID(serverResponse);
+    return serverResponse;
+  }
+
+  public String sendRegResponse(String regOut) {
+    StringBuilder res = new StringBuilder();
+    res.append("{regOut}").append(regOut);
+    String json = getRegResponseForSending(regOut);
+    res.append("{regResponse}").append(json);
+    String headerStr = "Content-Type:Application/json Accept:Application/json";
+    res.append("{ServerResponse}");
+    String serverResponse = Curl.postInSeparateThread(Endpoints.getRegResponseEndpoint(), headerStr, json);
+    res.append(serverResponse);
+    saveAAIDandKeyID(serverResponse);
+    return res.toString();
+  }
+
+  private String getRegRequest(String username) {
+    String url = Endpoints.getRegRequestEndpoint() + username;
+
+    return Curl.getInSeparateThread(url);
+  }
+
+  private void saveAAIDandKeyID(String res) {
+    try {
+      JSONArray regRecord = new JSONArray(res);
+      JSONObject authenticator = regRecord.getJSONObject(0).getJSONObject("authenticator");
+      Preferences.setSettingsParam("AAID", authenticator.getString("AAID"));
+      Preferences.setSettingsParam("keyID", authenticator.getString("KeyID"));
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  private String getRegResponseForSending(String regOut) {
+    try {
+      RegistrationResponse regResponse = gson.fromJson(Preferences.getSettingsParam("regResponse"), RegistrationResponse.class);
+      JSONObject assertions = new JSONObject(regOut);
+      regResponse.assertions = new AuthenticatorRegistrationAssertion[1];
+      regResponse.assertions[0] = new AuthenticatorRegistrationAssertion();
+      regResponse.assertions[0].assertionScheme = assertions.getJSONObject("responseData").getString("assertionScheme");
+      regResponse.assertions[0].assertion = assertions.getJSONObject("responseData").getString("assertion");
+      RegistrationResponse[] forSending = new RegistrationResponse[1];
+      forSending[0] = regResponse;
+
+      return gson.toJson(forSending, RegistrationResponse[].class);
+    } catch (Exception e) {
+      e.printStackTrace();
+
+      return null;
+    }
+  }
+
+  private String getFinalChalenge(RegistrationRequest regRequest) {
+    FinalChallengeParams fcParams = new FinalChallengeParams();
+    fcParams.appID = regRequest.header.appID;
+    Preferences.setSettingsParam("appID", fcParams.appID);
+    fcParams.facetID = getFacetId();
+    fcParams.challenge = regRequest.challenge;
+    fcParams.channelBinding = new ChannelBinding();
+    fcParams.channelBinding.cid_pubkey = "";
+    fcParams.channelBinding.serverEndPoint = "";
+    fcParams.channelBinding.tlsServerCertificate = "";
+    fcParams.channelBinding.tlsUnique = "";
+
+    return Base64url.encodeToString(gson.toJson(fcParams).getBytes());
+  }
+
+  private String getFacetId() {
+    return "";
+  }
+
+  private void freezeRegResponse(RegistrationRequest regRequest) {
+    String json = gson.toJson(getRegResponse(regRequest), RegistrationResponse.class);
+    Preferences.setSettingsParam("regResponse", json);
+  }
+
+  private RegistrationResponse getRegResponse(RegistrationRequest regRequest) {
+    RegistrationResponse response = new RegistrationResponse();
+
+    response.header = new OperationHeader();
+    response.header.serverData = regRequest.header.serverData;
+    response.header.appID = regRequest.header.appID;
+    response.header.op = regRequest.header.op;
+    response.header.upv = regRequest.header.upv;
+    response.fcParams = getFinalChalenge(regRequest);
+
+    return response;
+  }
 }

@@ -30,15 +30,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="org.ebayopensource.fidouafclient.SettingsActivity"
-            android:label="@string/app_name" >
-            <intent-filter>
-                <action android:name="org.ebayopensource.fidouafclient.SettingsActivity" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-        <activity
             android:name="org.ebayopensource.fidouafclient.ExampleFidoUafActivity"
             android:label="@string/app_name" >
             <intent-filter>

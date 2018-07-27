@@ -84,37 +84,6 @@ public class DBConnection {
         }
     }
 
-//    boolean authenticationRecordCount(AuthenticatorRecord ar) {
-//        try (Statement st = mConnection.createStatement()) {
-//            String query = prepareAuthenticatorRecord(ar);
-//            ResultSet result = st.executeQuery(query);
-//
-//            if (result.next())
-//                return result.getString(1) == null || result.getString(1).isEmpty();
-//
-//            return false;
-//        } catch (SQLException ex) {
-//            mLgr.log(Level.SEVERE, ex.getMessage(), ex);
-//
-//            return false;
-//        }
-//    }
-
-    int authenticationRecordCount(AuthenticatorRecord ar) {
-        try (Statement st = mConnection.createStatement()) {
-            ResultSet rs = st.executeQuery(this.prepareAuthenticatorRecord(ar));
-
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-        } catch (SQLException ex) {
-            mLgr.log(Level.SEVERE, ex.getMessage(), ex);
-            return 0;
-        }
-
-        return 0;
-    }
-
     // Private
 
     private DBConnection(String host, String port, String user, String dbName, String password) {

@@ -9,13 +9,7 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".MainActivity">
 
-
-
-
-
-
     <LinearLayout
-
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/regButton"
@@ -26,7 +20,7 @@
             android:layout_width="45dp"
             android:layout_height="45dp"
             android:contentDescription="RegRequest"
-            android:onClick="regRequest"
+            android:onClick="regRequestAction"
             android:src="@drawable/s_register" />
 
         <TextView
@@ -40,11 +34,9 @@
         android:id="@+id/editTextName"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@id/regButton"
-        />
+        android:layout_toRightOf="@id/regButton"/>
 
     <LinearLayout
-
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/regButton"
@@ -56,7 +48,6 @@
             android:layout_width="45dp"
             android:layout_height="45dp"
             android:contentDescription="FacetRequest"
-            android:onClick="facetIDRequest"
             android:src="@drawable/s_register" />
 
         <TextView
@@ -90,7 +81,6 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-
             <TextView
                 android:id="@+id/textViewMsg"
                 android:layout_width="fill_parent"
@@ -108,5 +98,4 @@
                 android:text="" />
         </LinearLayout>
     </ScrollView>
-
 </RelativeLayout>
