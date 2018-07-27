@@ -38,11 +38,11 @@ import com.google.gson.Gson;
 public class Auth {
 	
 	private Gson gson = new Gson();
-	
+
 	public String getAsmRequestJson (int authenticatorIndex){
 		return gson.toJson(getAsmRequest(authenticatorIndex));
 	}
-	
+
 	public ASMRequest<AuthenticateIn> getAsmRequest (int authenticatorIndex){
 		ASMRequest<AuthenticateIn> ret = new ASMRequest<AuthenticateIn>();
 		ret.args = getAuthenticateIn();

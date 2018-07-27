@@ -85,11 +85,14 @@ public class DBConnection {
     }
 
     boolean authenticationRecordCount(AuthenticatorRecord ar) {
-        // TODO: ASK PAVEL
         try (Statement st = mConnection.createStatement()) {
             String query = prepareAuthenticatorRecord(ar);
+            ResultSet result = st.executeQuery(query);
 
-            return false; //st.executeQuery(query).next();
+            if (result.next())
+                return result.getString(1) == null || result.getString(1).isEmpty();
+
+            return false;
         } catch (SQLException ex) {
             mLgr.log(Level.SEVERE, ex.getMessage(), ex);
 

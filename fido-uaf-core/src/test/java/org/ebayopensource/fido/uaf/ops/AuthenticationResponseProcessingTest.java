@@ -25,7 +25,7 @@ public class AuthenticationResponseProcessingTest {
 		StorageInterface serverData = new ServerDataImpl();
 		AuthenticatorRecord[] authenticatorRecords = p.verify(response, serverData);
 		assertTrue(authenticatorRecords.length == 1);
-		assertEquals(authenticatorRecords[0].username, TEST_USERNAME);
+		assertEquals(authenticatorRecords[0].account_address, TEST_USERNAME);
 		assertEquals(authenticatorRecords[0].status, "SUCCESS");
 		
 	}
@@ -66,7 +66,7 @@ public class AuthenticationResponseProcessingTest {
 
 		public RegistrationRecord readRegistrationRecord(String key) {
 			RegistrationRecord r = new RegistrationRecord();
-			r.username = TEST_USERNAME;
+			r.account_address = TEST_USERNAME;
 			r.PublicKey = 
 					"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAN6POEisT65JDZ_oHBXreI59W3BpISIrmYu9MzDD8ec9BCEgEOolypVx291mPg_Hv61AWKjCA6w_DaLCNKKC3g";
 //					"BJsvEtUsVKh7tmYHhJ2FBm3kHU-OCdWiUYVijgYa81MfkjQ1z6UiHbKP9_nRzIN9anprHqDGcR6q7O20q_yctZA=";

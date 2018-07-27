@@ -10,7 +10,7 @@ public class ApplicationContextProvider extends Application {
     static {
         Security.addProvider(new org.spongycastle.jce.provider.BouncyCastleProvider());
     }
- 
+
     /**
      * Keeps a reference of the application context
      */
@@ -23,7 +23,7 @@ public class ApplicationContextProvider extends Application {
         sContext = getApplicationContext();
  
     }
- 
+
     /**
      * Returns the application context
      *
