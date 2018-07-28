@@ -19,7 +19,6 @@ package org.ebayopensource.fidouafclient.op;
 import org.ebayopensource.fido.uaf.crypto.Base64url;
 import org.ebayopensource.fidouafclient.curl.Curl;
 import org.ebayopensource.fidouafclient.util.Endpoints;
-import org.ebayopensource.fidouafclient.util.Preferences;
 import org.ebayopensource.fido.uaf.msg.AuthenticatorRegistrationAssertion;
 import org.ebayopensource.fido.uaf.msg.ChannelBinding;
 import org.ebayopensource.fido.uaf.msg.FinalChallengeParams;
@@ -30,7 +29,9 @@ import org.ebayopensource.fido.uaf.msg.asm.obj.RegisterIn;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.google.gson.Gson;
@@ -46,8 +47,13 @@ public class Reg {
   // Variables
 
   private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+  private SharedPreferences mPrefs;
 
   // Public
+
+  public Reg(Activity activity) {
+    mPrefs = activity.getApplicationContext().getSharedPreferences("FIDO", 0);
+  }
 
   public String getUafMsgRegRequest(String accountAddress, String facetId, Context context) {
     Log.e(LOG_TAG, "GET UAF MSG REG REQUEST");
@@ -55,30 +61,30 @@ public class Reg {
     String serverResponse = getRegRequest(accountAddress);
     Log.e(LOG_TAG, "serverResponse: " + serverResponse);
 
-    return OpUtils.getUafRequest(serverResponse, facetId, context, false);
+    return OpUtils.getUafRequest(serverResponse, facetId, context, false, accountAddress);
   }
 
-  public RegisterIn getRegIn(String username) {
-    RegisterIn ret = new RegisterIn();
-    String url = Endpoints.getRegRequestEndpoint() + username;
-    String regRespFromServer = Curl.getInSeparateThread(url);
-    RegistrationRequest regRequest = null;
-    try {
-      regRequest = gson.fromJson(regRespFromServer, RegistrationRequest[].class)[0];
-      ret.appID = regRequest.header.appID;
-      ret.attestationType = 15879;
-      ret.finalChallenge = getFinalChalenge(regRequest);
-      ret.username = username;
-      freezeRegResponse(regRequest);
-    } catch (Exception ignored) {
+//  public RegisterIn getRegIn(String username) {
+//    RegisterIn ret = new RegisterIn();
+//    String url = Endpoints.URL_REG_REQUEST;
+//    String regRespFromServer = Curl.getInSeparateThread(url);
+//    RegistrationRequest regRequest = null;
+//    try {
+//      regRequest = gson.fromJson(regRespFromServer, RegistrationRequest[].class)[0];
+//      ret.appID = regRequest.header.appID;
+//      ret.attestationType = 15879;
+//      ret.finalChallenge = getFinalChalenge(regRequest);
+//      ret.username = username;
+//      freezeRegResponse(regRequest);
+//    } catch (Exception ignored) {
+//
+//    }
+//
+//    return ret;
+//  }
 
-    }
-
-    return ret;
-  }
-
-  public String clientSendRegResponse(String uafMessage) {
-    String serverResponse = OpUtils.clientSendRegResponse(uafMessage, Endpoints.getRegResponseEndpoint());
+  public String clientSendRegResponse(String uafMessage, String accountAddress) {
+    String serverResponse = OpUtils.clientSendRegResponse(uafMessage, Endpoints.URL_REG_RESPONSE, accountAddress);
     saveAAIDandKeyID(serverResponse);
     return serverResponse;
   }
@@ -90,24 +96,24 @@ public class Reg {
     res.append("{regResponse}").append(json);
     String headerStr = "Content-Type:Application/json Accept:Application/json";
     res.append("{ServerResponse}");
-    String serverResponse = Curl.postInSeparateThread(Endpoints.getRegResponseEndpoint(), headerStr, json);
+    String serverResponse = Curl.postInSeparateThread(Endpoints.URL_REG_RESPONSE, headerStr, json);
     res.append(serverResponse);
     saveAAIDandKeyID(serverResponse);
     return res.toString();
   }
 
-  private String getRegRequest(String username) {
-    String url = Endpoints.getRegRequestEndpoint() + username;
+  private String getRegRequest(String accountAddress) {
+    String url = Endpoints.URL_REG_REQUEST;
 
-    return Curl.getInSeparateThread(url);
+    return Curl.getInSeparateThread(url, accountAddress);
   }
 
   private void saveAAIDandKeyID(String res) {
     try {
       JSONArray regRecord = new JSONArray(res);
       JSONObject authenticator = regRecord.getJSONObject(0).getJSONObject("authenticator");
-      Preferences.setSettingsParam("AAID", authenticator.getString("AAID"));
-      Preferences.setSettingsParam("keyID", authenticator.getString("KeyID"));
+      setSettings("AAID", authenticator.getString("AAID"));
+      setSettings("keyID", authenticator.getString("KeyID"));
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -115,7 +121,7 @@ public class Reg {
 
   private String getRegResponseForSending(String regOut) {
     try {
-      RegistrationResponse regResponse = gson.fromJson(Preferences.getSettingsParam("regResponse"), RegistrationResponse.class);
+      RegistrationResponse regResponse = gson.fromJson(mPrefs.getString("regResponse", ""), RegistrationResponse.class);
       JSONObject assertions = new JSONObject(regOut);
       regResponse.assertions = new AuthenticatorRegistrationAssertion[1];
       regResponse.assertions[0] = new AuthenticatorRegistrationAssertion();
@@ -135,7 +141,7 @@ public class Reg {
   private String getFinalChalenge(RegistrationRequest regRequest) {
     FinalChallengeParams fcParams = new FinalChallengeParams();
     fcParams.appID = regRequest.header.appID;
-    Preferences.setSettingsParam("appID", fcParams.appID);
+    setSettings("appID", fcParams.appID);
     fcParams.facetID = getFacetId();
     fcParams.challenge = regRequest.challenge;
     fcParams.channelBinding = new ChannelBinding();
@@ -153,7 +159,7 @@ public class Reg {
 
   private void freezeRegResponse(RegistrationRequest regRequest) {
     String json = gson.toJson(getRegResponse(regRequest), RegistrationResponse.class);
-    Preferences.setSettingsParam("regResponse", json);
+    setSettings("regResponse", json);
   }
 
   private RegistrationResponse getRegResponse(RegistrationRequest regRequest) {
@@ -167,5 +173,11 @@ public class Reg {
     response.fcParams = getFinalChalenge(regRequest);
 
     return response;
+  }
+
+  private void setSettings(String paramName, String paramValue) {
+    SharedPreferences.Editor editor = mPrefs.edit();
+    editor.putString(paramName, paramValue);
+    editor.apply();
   }
 }

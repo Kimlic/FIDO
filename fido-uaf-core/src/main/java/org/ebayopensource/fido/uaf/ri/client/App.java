@@ -65,7 +65,7 @@ public class App {
 		RegistrationRequest req = new RegistrationRequest();
 		req.header = new OperationHeader();
 		req.header.op = Operation.Reg;
-		req.header.appID = "https://uaf-test-1.noknoktest.com:8443/SampleApp/uaf/facets";
+		req.header.appID = "android:apk-key-hash:FY0JRonscKUlbxb6cGXZABk3pU8"; //"https://uaf-test-1.noknoktest.com:8443/SampleApp/uaf/facets";
 		req.header.serverData = "IjycjPZYiWMaQ1tKLrJROiXQHmYG0tSSYGjP5mgjsDaM17RQgq0dl3NNDDTx9d-aSR_6hGgclrU2F2Yj-12S67v5VmQHj4eWVseLulHdpk2v_hHtKSvv_DFqL4n2IiUY6XZWVbOnvg";
 		req.challenge = "H9iW9yA9aAXF_lelQoi_DhUk514Ad8Tqv0zCnCqKDpo";
 		req.username = "apa";
@@ -114,7 +114,7 @@ public class App {
 		AuthenticationRequest req = new AuthenticationRequest();
 		req.header = new OperationHeader();
 		req.header.op = Operation.Auth;
-		req.header.appID = "https://uaf-test-1.noknoktest.com:8443/SampleApp/uaf/facets";
+		req.header.appID = "android:apk-key-hash:FY0JRonscKUlbxb6cGXZABk3pU8"; //"https://uaf-test-1.noknoktest.com:8443/SampleApp/uaf/facets";
 		req.header.serverData = "5s7n8-7_LDAtRIKKYqbAtTTOezVKCjl2mPorYzbpxRrZ-_3wWroMXsF_pLYjNVm_l7bplAx4bkEwK6ibil9EHGfdfKOQ1q0tyEkNJFOgqdjVmLioroxgThlj8Istpt7q";
 		req.challenge = "HQ1VkTUQC1NJDOo6OOWdxewrb9i5WthjfKIehFxpeuU";
 		req.header.upv = new Version(1, 0);

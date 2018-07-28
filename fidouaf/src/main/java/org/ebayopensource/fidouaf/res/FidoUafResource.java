@@ -194,11 +194,12 @@ public class FidoUafResource {
     public Facets facets() {
         String timestamp = new Date().toString();
         Dash.getInstance().stats.put(Dash.LAST_REG_REQ, timestamp);
-        String[] trustedIds = {"https://www.head2toes.org",
-                "android:apk-key-hash:Df+2X53Z0UscvUu6obxC3rIfFyk",
-                "android:apk-key-hash:bE0f1WtRJrZv/C0y9CM73bAUqiI",
-                "android:apk-key-hash:Lir5oIjf552K/XN4bTul0VS3GfM",
-                "https://openidconnect.ebay.com"};
+        String[] trustedIds = {
+                "http://localhost:4000",
+                "http://56b00021.ngrok.io",
+                "http://c9b052e0.ngrok.io",
+                "android:apk-key-hash:FY0JRonscKUlbxb6cGXZABk3pU8"
+        };
         List<String> trustedIdsList = new ArrayList<String>(Arrays.asList(trustedIds));
         trustedIdsList.addAll(Dash.getInstance().facetIds);
         trustedIdsList.add(readFacet());
@@ -238,9 +239,11 @@ public class FidoUafResource {
     private String getAppId() {
         // You can get it dynamically.
         // It only works if your server is not behind a reverse proxy
-        return uriInfo.getBaseUri() + "v1/public/uaf/facets";
+        //return uriInfo.getBaseUri() + "v1/public/uaf/facets";
         // Or you can define it statically
 //		return "https://www.head2toes.org/fidouaf/v1/public/uaf/facets";
+
+        return "android:apk-key-hash:FY0JRonscKUlbxb6cGXZABk3pU8";
     }
 
     @POST

@@ -1,6 +1,7 @@
 package org.ebayopensource.fido.uaf.crypto;
 
-import org.ebayopensource.fidouafclient.util.Preferences;
+import android.app.Activity;
+import android.content.SharedPreferences;
 
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
@@ -13,59 +14,68 @@ import java.security.spec.ECGenParameterSpec;
 
 public class FidoKeyStoreBC extends FidoKeystore {
 
-    private static final String TAG = FidoKeyStoreBC.class.getSimpleName();
+  private SharedPreferences mPrefs;
 
-    @Override
-    public KeyPair generateKeyPair(String username) {
-        try {
-            ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("secp256r1");
-            KeyPairGenerator g = KeyPairGenerator.getInstance("ECDSA", "SC");
-            g.initialize(ecGenSpec, new SecureRandom());
-            KeyPair keyPair = g.generateKeyPair();
+  FidoKeyStoreBC(Activity activity) {
+    mPrefs = activity.getApplicationContext().getSharedPreferences("FIDO", 0);
+  }
 
-            Preferences.setSettingsParam("pub", Base64url.encodeToString(keyPair.getPublic().getEncoded()));
-            Preferences.setSettingsParam("priv", Base64url.encodeToString(keyPair.getPrivate().getEncoded()));
+  @Override
+  public KeyPair generateKeyPair(String username) {
+    try {
+      ECGenParameterSpec ecGenSpec = new ECGenParameterSpec("secp256r1");
+      KeyPairGenerator g = KeyPairGenerator.getInstance("ECDSA", "SC");
+      g.initialize(ecGenSpec, new SecureRandom());
+      KeyPair keyPair = g.generateKeyPair();
 
-            return keyPair;
-        } catch(GeneralSecurityException e) {
-            throw new RuntimeException(e);
-        }
+      setSettings("pub", Base64url.encodeToString(keyPair.getPublic().getEncoded()));
+      setSettings("priv", Base64url.encodeToString(keyPair.getPrivate().getEncoded()));
+
+      return keyPair;
+    } catch (GeneralSecurityException e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public KeyPair getKeyPair(String username) {
-        try {
-            PublicKey pubKey = getPublicKey(username);
-            PrivateKey privKey =
-                    KeyCodec.getPrivKey(Base64url.decode(Preferences.getSettingsParam("priv")));
+  @Override
+  public KeyPair getKeyPair(String username) {
+    try {
+      String prefPriv = mPrefs.getString("priv", "");
+      PublicKey pubKey = getPublicKey(username);
+      PrivateKey privKey = KeyCodec.getPrivKey(Base64url.decode(prefPriv));
 
-            return new KeyPair(pubKey, privKey);
-        } catch (GeneralSecurityException e) {
-            throw new RuntimeException(e);
-        }
+      return new KeyPair(pubKey, privKey);
+    } catch (GeneralSecurityException e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public PublicKey getPublicKey(String username) {
-        try {
-            PublicKey pub =
-                    KeyCodec.getPubKey(Base64url.decode(Preferences.getSettingsParam("pub")));
+  @Override
+  public PublicKey getPublicKey(String username) {
+    try {
+      String prefPub = mPrefs.getString("pub", "");
 
-            return pub;
-        } catch (GeneralSecurityException e) {
-            throw new RuntimeException(e);
-        }
+      return KeyCodec.getPubKey(Base64url.decode(prefPub));
+    } catch (GeneralSecurityException e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    @Override
-    public X509Certificate getCertificate(String username) {
-        // XXX -- not implemented as no cert
-        return null;
-    }
+  @Override
+  public X509Certificate getCertificate(String username) {
+    // XXX -- not implemented as no cert
+    return null;
+  }
 
-    @Override
-    public FidoSigner getSigner(String username) {
-        // XXX doesn't use username ATM
-        return new FidoSignerBC();
-    }
+  @Override
+  public FidoSigner getSigner(String username) {
+    // XXX doesn't use username ATM
+    return new FidoSignerBC();
+  }
+
+  private void setSettings(String paramName, String paramValue) {
+    SharedPreferences.Editor editor = mPrefs.edit();
+    editor.putString(paramName, paramValue);
+    editor.apply();
+  }
 }

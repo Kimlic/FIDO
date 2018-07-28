@@ -20,31 +20,30 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
+
         <activity
             android:name="org.ebayopensource.fidouafclient.MainActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name="org.ebayopensource.fidouafclient.ExampleFidoUafActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="org.ebayopensource.fidouafclient.ExampleFidoUafActivity" />
-
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+
             <intent-filter>
                 <action android:name="org.fidoalliance.intent.FIDO_OPERATION" />
-
                 <data android:mimeType="application/fido.uaf_client+json" />
-
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-    </application>
 
+    </application>
 </manifest>

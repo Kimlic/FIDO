@@ -28,7 +28,7 @@ import org.ebayopensource.fido.uaf.msg.Version;
 
 public class RegistrationRequestGeneration {
 
-	public static final String APP_ID = "https://uaf.ebay.com/uaf/facets";
+	public static final String APP_ID = "android:apk-key-hash:FY0JRonscKUlbxb6cGXZABk3pU8"; //"https://uaf.ebay.com/uaf/facets";
 	private String appId = APP_ID;
 	private String[] acceptedAaids;
 

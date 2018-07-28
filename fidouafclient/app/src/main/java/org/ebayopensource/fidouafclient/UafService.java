@@ -40,8 +40,8 @@ public class UafService {
     }
   }
 
-  public static RegistrationRequest getRegistrationRequest(String username) {
-    String regReq = Curl.getInSeparateThread(Endpoints.getRegRequestEndpoint() + username);
+  public static RegistrationRequest getRegistrationRequest(String accountAddress) {
+    String regReq = Curl.getInSeparateThread(Endpoints.URL_REG_REQUEST, accountAddress);
     Gson gson = new Gson();
 
     return gson.fromJson(regReq, RegistrationRequest[].class)[0];

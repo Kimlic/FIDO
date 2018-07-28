@@ -16,6 +16,8 @@
 
 package org.ebayopensource.fido.uaf.client;
 
+import android.app.Activity;
+
 import com.google.gson.Gson;
 
 import org.ebayopensource.fido.uaf.crypto.Base64url;
@@ -30,53 +32,54 @@ import java.security.KeyPair;
 
 public class AuthenticationRequestProcessor {
 
-	private FidoSigner fidoSigner;
-	private KeyPair signingKeyPair;
+  private FidoSigner fidoSigner;
+  private KeyPair signingKeyPair;
+  private Activity mActivity;
 
-	public AuthenticationRequestProcessor(FidoSigner fidoSigner, KeyPair signingKeyPair) {
-		this.fidoSigner = fidoSigner;
-		this.signingKeyPair = signingKeyPair;
-	}
-	
-	public AuthenticationResponse processRequest(AuthenticationRequest request) {
-		AuthenticationResponse response = new AuthenticationResponse();
-		AuthAssertionBuilder builder = new AuthAssertionBuilder(fidoSigner, signingKeyPair);
-		Gson gson = new Gson();
+  public AuthenticationRequestProcessor(FidoSigner fidoSigner, KeyPair signingKeyPair, Activity activity) {
+    mActivity = activity;
+    this.fidoSigner = fidoSigner;
+    this.signingKeyPair = signingKeyPair;
+  }
+
+  public AuthenticationResponse processRequest(AuthenticationRequest request) {
+    AuthenticationResponse response = new AuthenticationResponse();
+    AuthAssertionBuilder builder = new AuthAssertionBuilder(fidoSigner, signingKeyPair, mActivity);
+    Gson gson = new Gson();
 
 
-		response.header = new OperationHeader();
-		response.header.serverData = request.header.serverData;
-		response.header.op = request.header.op;
-		response.header.upv = request.header.upv;
-		response.header.appID = request.header.appID;
+    response.header = new OperationHeader();
+    response.header.serverData = request.header.serverData;
+    response.header.op = request.header.op;
+    response.header.upv = request.header.upv;
+    response.header.appID = request.header.appID;
 
-		FinalChallengeParams fcParams = new FinalChallengeParams();
-		fcParams.appID = request.header.appID;
-		fcParams.facetID = getFacetId();
-		fcParams.challenge = request.challenge;
-		response.fcParams = Base64url.encodeToString(gson.toJson(
-				fcParams).getBytes());
-		setAssertions(response,builder);
-		return response;
-	}
+    FinalChallengeParams fcParams = new FinalChallengeParams();
+    fcParams.appID = request.header.appID;
+    fcParams.facetID = getFacetId();
+    fcParams.challenge = request.challenge;
+    response.fcParams = Base64url.encodeToString(gson.toJson(
+        fcParams).getBytes());
+    setAssertions(response, builder);
+    return response;
+  }
 
-	private String getFacetId() {
-		return "";
-	}
+  private String getFacetId() {
+    return "";
+  }
 
-	private void setAssertions(AuthenticationResponse response, AuthAssertionBuilder builder) {
-		response.assertions = new AuthenticatorSignAssertion[1];
-		try {
-			response.assertions[0] = new AuthenticatorSignAssertion();
-			response.assertions[0].assertion = builder.getAssertions(response);
-			response.assertions[0].assertionScheme = "UAFV1TLV";
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
+  private void setAssertions(AuthenticationResponse response, AuthAssertionBuilder builder) {
+    response.assertions = new AuthenticatorSignAssertion[1];
+    try {
+      response.assertions[0] = new AuthenticatorSignAssertion();
+      response.assertions[0].assertion = builder.getAssertions(response);
+      response.assertions[0].assertionScheme = "UAFV1TLV";
+    } catch (Exception e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
 
+  }
 
 
 }

@@ -7,7 +7,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context=".MainActivity">
+    tools:context=".ExampleFidoUafActivity">
 
 
     <LinearLayout
@@ -25,7 +25,7 @@
             android:layout_alignTop="@+id/imageSeparator2"
 
             android:contentDescription="AuthRequest"
-            android:onClick="proceed"
+            android:onClick="proceedAction"
             android:src="@drawable/s_proceed" />
 
         <TextView

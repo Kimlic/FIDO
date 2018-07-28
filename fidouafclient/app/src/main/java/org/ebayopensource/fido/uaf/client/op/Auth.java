@@ -15,6 +15,8 @@
  */
 package org.ebayopensource.fido.uaf.client.op;
 
+import android.app.Activity;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -27,39 +29,43 @@ import java.security.KeyPair;
 import java.util.logging.Logger;
 
 public class Auth {
-	
-	private Logger logger = Logger.getLogger(this.getClass().getName());
-	private Gson gson = new GsonBuilder().disableHtmlEscaping().create(); 
-	
-	public String auth (String uafMsg, FidoSigner fidoSigner, KeyPair signingKeyPair){
-	logger.info ("  [UAF][1]Auth  ");
-	try {
-		logger.info("  [UAF][2]Auth - priv key retrieved");
-		AuthenticationRequestProcessor p = new AuthenticationRequestProcessor(fidoSigner, signingKeyPair);
-		AuthenticationResponse[] ret = new AuthenticationResponse[1];
-		AuthenticationResponse regResponse = p.processRequest(getAuthRequest(uafMsg));
-		logger.info ("  [UAF][4]Auth - Auth Response Formed  ");
-		logger.info(regResponse.assertions[0].assertion);
-		logger.info ("  [UAF][6]Auth - done  ");
-		ret[0] = regResponse;
-		return getUafProtocolMsg( gson.toJson(ret) );
-	} catch (Exception e) {
-		e.printStackTrace();
-		return "e="+e;
-	} 
-	}
-	
-	public AuthenticationRequest getAuthRequest(String uafMsg) {
-		logger.info ("  [UAF][3]Reg - getAuthRequest  : " + uafMsg);
-		return gson.fromJson(uafMsg, AuthenticationRequest[].class)[0];
-	}
 
-	public String getUafProtocolMsg (String uafMsg){
-		String msg = "{\"uafProtocolMessage\":";
-		msg = msg + "\"";
-		msg = msg + uafMsg.replace("\"","\\\"");
-		msg = msg + "\"";
-		msg = msg + "}";
-		return msg;
-	}
+  private Logger logger = Logger.getLogger(this.getClass().getName());
+  private Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+  private Activity mActivity;
+
+  public Auth(Activity activity) {
+    mActivity = activity;
+  }
+
+  public String auth(String uafMsg, FidoSigner fidoSigner, KeyPair signingKeyPair) {
+    try {
+      logger.info("  [UAF][2]Auth - priv key retrieved");
+      AuthenticationRequestProcessor p = new AuthenticationRequestProcessor(fidoSigner, signingKeyPair, mActivity);
+      AuthenticationResponse[] ret = new AuthenticationResponse[1];
+      AuthenticationResponse regResponse = p.processRequest(getAuthRequest(uafMsg));
+      logger.info("  [UAF][4]Auth - Auth Response Formed  ");
+      logger.info(regResponse.assertions[0].assertion);
+      logger.info("  [UAF][6]Auth - done  ");
+      ret[0] = regResponse;
+      return getUafProtocolMsg(gson.toJson(ret));
+    } catch (Exception e) {
+      e.printStackTrace();
+      return "e=" + e;
+    }
+  }
+
+  public AuthenticationRequest getAuthRequest(String uafMsg) {
+    logger.info("  [UAF][3]Reg - getAuthRequest  : " + uafMsg);
+    return gson.fromJson(uafMsg, AuthenticationRequest[].class)[0];
+  }
+
+  public String getUafProtocolMsg(String uafMsg) {
+    String msg = "{\"uafProtocolMessage\":";
+    msg = msg + "\"";
+    msg = msg + uafMsg.replace("\"", "\\\"");
+    msg = msg + "\"";
+    msg = msg + "}";
+    return msg;
+  }
 }

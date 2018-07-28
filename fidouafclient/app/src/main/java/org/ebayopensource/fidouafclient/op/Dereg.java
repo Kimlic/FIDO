@@ -17,9 +17,11 @@
 package org.ebayopensource.fidouafclient.op;
 
 
+import android.app.Activity;
+import android.content.SharedPreferences;
+
 import org.ebayopensource.fidouafclient.curl.Curl;
 import org.ebayopensource.fidouafclient.util.Endpoints;
-import org.ebayopensource.fidouafclient.util.Preferences;
 import org.ebayopensource.fido.uaf.msg.DeregisterAuthenticator;
 import org.ebayopensource.fido.uaf.msg.DeregistrationRequest;
 import org.ebayopensource.fido.uaf.msg.Operation;
@@ -36,122 +38,133 @@ import com.google.gson.Gson;
 
 public class Dereg {
 
-	private Gson gson = new Gson();
-	
-	public String getUafMsgRequest (){
-		String msg = "{\"uafProtocolMessage\":\"";
-		try {
-			DeregistrationRequest regResponse = getDereg(); 
-			String forSending = getDeregUafMessage(regResponse);
-			Preferences.setSettingsParam("deregMsg", forSending);
+  private Gson gson = new Gson();
+  private SharedPreferences mPrefs;
+
+  public Dereg(Activity activity) {
+    mPrefs = activity.getApplicationContext().getSharedPreferences("FIDO", 0);
+  }
+
+  public String getUafMsgRequest() {
+    String msg = "{\"uafProtocolMessage\":\"";
+    try {
+      DeregistrationRequest regResponse = getDereg();
+      String forSending = getDeregUafMessage(regResponse);
+      setSettings("deregMsg", forSending);
 //			post(forSending);
-			JSONArray deregReq = new JSONArray(forSending);
-			((JSONObject)deregReq.get(0)).getJSONObject("header").put("appID", "android:apk-key-hash:bE0f1WtRJrZv/C0y9CM73bAUqiI");
-			((JSONObject)deregReq.get(0)).getJSONObject("header").remove("serverData");
-			JSONObject uafMsg = new JSONObject();
-			uafMsg.put("uafProtocolMessage", deregReq.toString());
-			return uafMsg.toString();
-		} catch (JSONException e) {
-			e.printStackTrace();
-		}
-		msg = msg + "\"}";
-		return msg;
-	}
+      JSONArray deregReq = new JSONArray(forSending);
+      ((JSONObject) deregReq.get(0)).getJSONObject("header").put("appID", "android:apk-key-hash:FY0JRonscKUlbxb6cGXZABk3pU8");
+      ((JSONObject) deregReq.get(0)).getJSONObject("header").remove("serverData");
+      JSONObject uafMsg = new JSONObject();
+      uafMsg.put("uafProtocolMessage", deregReq.toString());
+      return uafMsg.toString();
+    } catch (JSONException e) {
+      e.printStackTrace();
+    }
+    msg = msg + "\"}";
+    return msg;
+  }
 
-	public String getAsmRequestJson(int authenticatorIndex) {
-		return gson.toJson(getAsmRequest(authenticatorIndex));
-	}
+  public String getAsmRequestJson(int authenticatorIndex) {
+    return gson.toJson(getAsmRequest(authenticatorIndex));
+  }
 
-	public ASMRequest<DeregisterIn> getAsmRequest(int authenticatorIndex) {
-		ASMRequest<DeregisterIn> ret = new ASMRequest<DeregisterIn>();
-		DeregisterIn arg = new DeregisterIn();
-		arg.appID = Preferences.getSettingsParam("appID");
-		arg.keyID = Preferences.getSettingsParam("keyID");
-		ret.args = arg;
-		ret.asmVersion = new Version(1, 0);
-		ret.authenticatorIndex = authenticatorIndex;
-		ret.requestType = Request.Deregister;
-		sendDereg();
-		return ret;
-	}
+  public ASMRequest<DeregisterIn> getAsmRequest(int authenticatorIndex) {
+    ASMRequest<DeregisterIn> ret = new ASMRequest<DeregisterIn>();
+    DeregisterIn arg = new DeregisterIn();
+    arg.appID = mPrefs.getString("appID", "");
+    arg.keyID = mPrefs.getString("keyID", "");
+    ret.args = arg;
+    ret.asmVersion = new Version(1, 0);
+    ret.authenticatorIndex = authenticatorIndex;
+    ret.requestType = Request.Deregister;
+    sendDereg();
+    return ret;
+  }
 
-	public void recordKeyId(String registrationsOut) {
-		JSONObject asmResponse;
-		try {
-			asmResponse = new JSONObject(registrationsOut);
+  public void recordKeyId(String registrationsOut) {
+    JSONObject asmResponse;
+    try {
+      asmResponse = new JSONObject(registrationsOut);
 
-			if (asmResponse.get("responseData") == null) {
-				return;
-			}
-			String keyId = asmResponse.getJSONObject("responseData")
-					.getJSONArray("appRegs").getJSONObject(0)
-					.getJSONArray("keyIDs").getString(0);
-			Preferences.setSettingsParam("keyID", keyId);
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
-	public String sendDereg() {
-		return post(getDereg());
-	}
+      if (asmResponse.get("responseData") == null) {
+        return;
+      }
+      String keyId = asmResponse.getJSONObject("responseData")
+          .getJSONArray("appRegs").getJSONObject(0)
+          .getJSONArray("keyIDs").getString(0);
+      setSettings("keyID", keyId);
+    } catch (JSONException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+  }
 
-	public DeregistrationRequest getDereg() {
-		try {
-			DeregistrationRequest dereg = new DeregistrationRequest();
-			dereg.header = new OperationHeader();
-			dereg.header.upv = new Version(1, 0);
-			dereg.header.op = Operation.Dereg;
-			//dereg.header.serverData = "";
-			dereg.header.appID = Preferences.getSettingsParam("appID");
-			dereg.authenticators = new DeregisterAuthenticator[1];
-			DeregisterAuthenticator deregAuth = new DeregisterAuthenticator();
-			deregAuth.aaid = Preferences.getSettingsParam("AAID");
-			String tmp = Preferences.getSettingsParam("keyID");
-			byte[] bytes = tmp.getBytes();
-			deregAuth.keyID = 
-					tmp;
-					//Base64.encodeToString(bytes, Base64.NO_WRAP);
-			dereg.authenticators[0] = deregAuth;
+  public String sendDereg() {
+    return post(getDereg());
+  }
 
-			//return post(dereg);
-			return dereg;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
+  public DeregistrationRequest getDereg() {
+    try {
+      DeregistrationRequest dereg = new DeregistrationRequest();
+      dereg.header = new OperationHeader();
+      dereg.header.upv = new Version(1, 0);
+      dereg.header.op = Operation.Dereg;
+      //dereg.header.serverData = "";
+      dereg.header.appID = mPrefs.getString("appID", "");
+      dereg.authenticators = new DeregisterAuthenticator[1];
+      DeregisterAuthenticator deregAuth = new DeregisterAuthenticator();
+      deregAuth.aaid = mPrefs.getString("AAID", "");
+      String tmp = mPrefs.getString("keyID", "");
+      byte[] bytes = tmp.getBytes();
+      deregAuth.keyID =
+          tmp;
+      //Base64.encodeToString(bytes, Base64.NO_WRAP);
+      dereg.authenticators[0] = deregAuth;
 
-	private String post(DeregistrationRequest regResponse) {
-		String header = "Content-Type:Application/json Accept:Application/json";
-		String json = getDeregUafMessage(regResponse);
-		return Curl.postInSeparateThread(Endpoints.getDeregEndpoint(), header , json);
-	}
-	
-	public String post(String json) {
-		String header = "Content-Type:Application/json Accept:Application/json";
-		return Curl.postInSeparateThread(Endpoints.getDeregEndpoint(), header , json);
-	}
+      //return post(dereg);
+      return dereg;
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
 
-	public String getDeregUafMessage(DeregistrationRequest regResponse) {
-		DeregistrationRequest[] forSending = new DeregistrationRequest[1];
-		forSending[0] = regResponse;
-		String json = gson.toJson(forSending, DeregistrationRequest[].class);
-		return json;
-	}
+  private String post(DeregistrationRequest regResponse) {
+    String header = "Content-Type:Application/json Accept:Application/json";
+    String json = getDeregUafMessage(regResponse);
+    return Curl.postInSeparateThread(Endpoints.URL_DEREG_RESPONSE, header, json);
+  }
 
-	public String clientSendDeregResponse (String uafMessage) {
-		StringBuffer res = new StringBuffer();
-		String decoded = null;
-		try {
-			JSONObject json = new JSONObject(uafMessage);
-			decoded = json.getString("uafProtocolMessage").replace("\\", "");
-			post(decoded);
-			return decoded;
-		} catch (JSONException e) {
-			e.printStackTrace();
-			return e.getMessage();
-		}
-	}
+  public String post(String json) {
+    String header = "Content-Type:Application/json Accept:Application/json";
+    return Curl.postInSeparateThread(Endpoints.URL_DEREG_RESPONSE, header, json);
+  }
+
+  public String getDeregUafMessage(DeregistrationRequest regResponse) {
+    DeregistrationRequest[] forSending = new DeregistrationRequest[1];
+    forSending[0] = regResponse;
+    String json = gson.toJson(forSending, DeregistrationRequest[].class);
+    return json;
+  }
+
+  public String clientSendDeregResponse(String uafMessage) {
+    StringBuffer res = new StringBuffer();
+    String decoded = null;
+    try {
+      JSONObject json = new JSONObject(uafMessage);
+      decoded = json.getString("uafProtocolMessage").replace("\\", "");
+      post(decoded);
+      return decoded;
+    } catch (JSONException e) {
+      e.printStackTrace();
+      return e.getMessage();
+    }
+  }
+
+  private void setSettings(String paramName, String paramValue) {
+    SharedPreferences.Editor editor = mPrefs.edit();
+    editor.putString(paramName, paramValue);
+    editor.apply();
+  }
 }
