@@ -446,6 +446,15 @@ public class FidoUafResource {
             System.out.println("findOp=" + findOp);
 
             AuthenticatorRecord[] result = processAuthResponse(payload);
+            System.out.println("RESULT A: " + result[0].AAID);
+            System.out.println("RESULT B: " + result[0].KeyID);
+
+            if (result[0].AAID == null || result[0].KeyID == null) {
+                servResp.statusCode = 1500;
+                servResp.Description = "Error: no authenticator found";
+
+                return servResp;
+            }
 
             if (result[0].status.equals("SUCCESS")) {
                 servResp.statusCode = 1200;

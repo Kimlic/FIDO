@@ -103,7 +103,7 @@
             android:layout_width="45dp"
             android:layout_height="45dp"
             android:contentDescription="AuthRequest"
-            android:onClick="authRequest"
+            android:onClick="authRequestAction"
             android:src="@drawable/s_authenticate"
             android:layout_above="@+id/textAuthenticateLable"
             android:layout_alignLeft="@+id/textAuthenticateLable"

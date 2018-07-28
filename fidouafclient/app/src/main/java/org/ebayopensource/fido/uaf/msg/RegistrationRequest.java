@@ -19,6 +19,6 @@ package org.ebayopensource.fido.uaf.msg;
 public class RegistrationRequest {
 	public OperationHeader header;
 	public String challenge;
-	public String username;
+	public String accountAddress;
 	public Policy policy;
 }

@@ -21,58 +21,37 @@ import android.app.Activity;
 import com.google.gson.Gson;
 
 import org.ebayopensource.fido.uaf.client.RegistrationRequestProcessor;
-import org.ebayopensource.fido.uaf.crypto.FidoKeystore;
+import org.ebayopensource.fido.uaf.crypto.FidoKeystoreAndroidM;
 import org.ebayopensource.fido.uaf.msg.RegistrationRequest;
 import org.ebayopensource.fido.uaf.msg.RegistrationResponse;
 
 import java.security.KeyPair;
-import java.util.logging.Logger;
-
 
 public class Reg {
 
-  private Logger logger = Logger.getLogger(this.getClass().getName());
-  private Gson gson = new Gson();
+  // Public
 
-  private String username;
-  private FidoKeystore fidoKeystore;
-  private Activity mActivity;
-
-  public Reg(String username, FidoKeystore fidoKeystore, Activity activity) {
-    mActivity = activity;
-    this.username = username;
-    this.fidoKeystore = fidoKeystore;
-  }
-
-  public String register(String uafMsg) {
-    logger.info("  [UAF][1]Reg  ");
-
-    KeyPair keyPair = fidoKeystore.generateKeyPair(username);
-    logger.info("  [UAF][2]Reg - KeyPair generated" + keyPair);
-    RegistrationRequestProcessor p = new RegistrationRequestProcessor(mActivity);
+  public static String register(String uafMsg, String accountAddress, FidoKeystoreAndroidM fidoKeystore, Activity activity) {
     RegistrationResponse[] ret = new RegistrationResponse[1];
-    RegistrationResponse regResponse = p.processRequest(getRegistrationRequest(uafMsg), keyPair);
-    logger.info("  [UAF][4]Reg - Reg Response Formed  ");
-    logger.info(regResponse.assertions[0].assertion);
-    logger.info("  [UAF][6]Reg - done  ");
-    // fidoKeystore saves keys
-    logger.info("  [UAF][7]Reg - keys stored  ");
-    ret[0] = regResponse;
+    ret[0] = regResponse(uafMsg, accountAddress, fidoKeystore, activity);
 
-    return getUafProtocolMsg(gson.toJson(ret));
+    return getUafProtocolMsg(new Gson().toJson(ret));
   }
 
-  public RegistrationRequest getRegistrationRequest(String uafMsg) {
-    logger.info("  [UAF][3]Reg - getRegRequest  : " + uafMsg);
-    return gson.fromJson(uafMsg, RegistrationRequest[].class)[0];
+  // Private
+
+  private static RegistrationResponse regResponse(String uafMsg, String accountAddress, FidoKeystoreAndroidM fidoKeystore, Activity activity) {
+    KeyPair keyPair = fidoKeystore.generateKeyPair(accountAddress);
+    RegistrationRequestProcessor p = new RegistrationRequestProcessor(activity);
+
+    return p.processRequest(getRegistrationRequest(uafMsg), keyPair);
   }
 
-  public String getUafProtocolMsg(String uafMsg) {
-    String msg = "{\"uafProtocolMessage\":";
-    msg = msg + "\"";
-    msg = msg + uafMsg.replace("\"", "\\\"");
-    msg = msg + "\"";
-    msg = msg + "}";
-    return msg;
+  private static RegistrationRequest getRegistrationRequest(String uafMsg) {
+    return new Gson().fromJson(uafMsg, RegistrationRequest[].class)[0];
+  }
+
+  private static String getUafProtocolMsg(String uafMsg) {
+    return String.format("{\"uafProtocolMessage\":\"%s\"}", uafMsg.replace("\"", "\\\""));
   }
 }

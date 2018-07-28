@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
   private TextView mUsernameTextView;
 
   private Reg mReg;
-  private Dereg mDereg;
+//  private Dereg mDereg;
   private Auth mAuth;
   private SharedPreferences mPrefs;
 
@@ -70,9 +70,7 @@ public class MainActivity extends Activity {
     super.onCreate(savedInstanceState);
 
     mPrefs = getApplicationContext().getSharedPreferences("FIDO", 0);
-    mReg = new Reg(this);
-    mDereg = new Dereg(this);
-    mAuth = new Auth(this);
+//    mDereg = new Dereg(this);
 
     boolean isNotRegistered = mPrefs.getString("keyID", "").equals("");
     setContentView(isNotRegistered ? R.layout.activity_main : R.layout.activity_registered);
@@ -146,6 +144,8 @@ public class MainActivity extends Activity {
       mMsgTextView.setText(uafMessage);
 
       String res = mReg.clientSendRegResponse(uafMessage, ACCOUNT_ADDRESS);
+      mReg = null;
+
       setContentView(R.layout.activity_registered);
 
       findFields();
@@ -159,16 +159,19 @@ public class MainActivity extends Activity {
   }
 
   private void userAuthed(Intent data) {
-//    Log.e(LOG_TAG, "OPTION 5");
-//    String uafMessage = data.getStringExtra("message");
-//
-//    if (uafMessage == null)
-//      return;
-//
-//    mMsgTextView.setText(uafMessage);
-//
-//    String res = mAuth.clientSendResponse(uafMessage);
-//    mMsgTextView.setText(res);
+    Log.e(LOG_TAG, "OPTION 5");
+    String uafMessage = data.getStringExtra("message");
+
+    if (uafMessage == null)
+      return;
+
+    mMsgTextView.setText(uafMessage);
+
+    String res = mAuth.clientSendResponse(uafMessage, ACCOUNT_ADDRESS);
+    mAuth = null;
+
+    mMsgTextView.setText(res);
+    showToast(res);
   }
 
   private void userDereged(Intent data, StringBuilder extras) {
@@ -233,27 +236,47 @@ public class MainActivity extends Activity {
 
   @SuppressLint("SetTextI18n")
   public void regRequestAction(View view) {
-    Log.e(LOG_TAG, "REG REQUEST ACTION");
+    mReg = new Reg(this);
 
     String facetId = UafService.getFacetID(this);
-    Log.e(LOG_TAG, "facetId: " + facetId);
-
-    String regRequest = mReg.getUafMsgRegRequest(ACCOUNT_ADDRESS, facetId, this);
-    Log.e(LOG_TAG, "message, channelBindings: " + regRequest);
-
+    String request = mReg.getUafMsgRegRequest(ACCOUNT_ADDRESS, facetId, this);
     String intentType = UAFIntentType.UAF_OPERATION.name();
-    Log.e(LOG_TAG, "UAFIntentType: " + intentType);
 
     Bundle data = new Bundle();
-    data.putString("message", regRequest);
+    data.putString("message", request);
+    data.putString("channelBindings", request);
     data.putString("UAFIntentType", intentType);
-    data.putString("channelBindings", regRequest);
+    data.putString("accountAddress", ACCOUNT_ADDRESS);
 
     Intent intent = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
     intent.addCategory("android.intent.category.DEFAULT");
     intent.setType("application/fido.uaf_client+json");
     intent.putExtras(data);
+
     startActivityForResult(intent, REG_RESULT);
+  }
+
+  @SuppressLint("SetTextI18n")
+  public void authRequestAction(View view) {
+    mAuth = new Auth(this);
+
+    String facetId = UafService.getFacetID(this);
+    String request = mAuth.getUafMsgRequest(facetId, this, false, ACCOUNT_ADDRESS);
+    String intentType = UAFIntentType.UAF_OPERATION.name();
+    Log.e(LOG_TAG, "AUTH REQUEST:\n" + request);
+
+    Bundle data = new Bundle();
+    data.putString("message", request);
+    data.putString("channelBindings", request);
+    data.putString("UAFIntentType", intentType);
+    data.putString("accountAddress", ACCOUNT_ADDRESS);
+
+    Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
+    i.addCategory("android.intent.category.DEFAULT");
+    i.setType("application/fido.uaf_client+json");
+    i.putExtras(data);
+
+    startActivityForResult(i, AUTH_RESULT);
   }
 
   @SuppressLint("SetTextI18n")
@@ -273,24 +296,6 @@ public class MainActivity extends Activity {
 //    data.putString("channelBindings", uafMessage);
 //    i.putExtras(data);
 //    startActivityForResult(i, DEREG_RESULT);
-  }
-
-  @SuppressLint("SetTextI18n")
-  public void authRequest(View view) {
-//    Log.e(LOG_TAG, "AUTH REQUEST");
-//
-//    mTitleTextView.setText("Authentication operation executed");
-//
-//    String authRequest = mAuth.getUafMsgRequest(UafService.getFacetID(this), this, false);
-//    Intent i = new Intent("org.fidoalliance.intent.FIDO_OPERATION");
-//    i.addCategory("android.intent.category.DEFAULT");
-//    i.setType("application/fido.uaf_client+json");
-//    Bundle data = new Bundle();
-//    data.putString("message", authRequest);
-//    data.putString("UAFIntentType", "UAF_OPERATION");
-//    data.putString("channelBindings", authRequest);
-//    i.putExtras(data);
-//    startActivityForResult(i, AUTH_RESULT);
   }
 
   @SuppressLint("SetTextI18n")

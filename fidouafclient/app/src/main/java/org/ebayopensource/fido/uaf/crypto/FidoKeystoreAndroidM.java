@@ -1,5 +1,6 @@
 package org.ebayopensource.fido.uaf.crypto;
 
+import android.app.Activity;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
@@ -20,28 +21,32 @@ import java.security.Signature;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
 
-public class FidoKeystoreAndroidM extends FidoKeystore {
+public class FidoKeystoreAndroidM {
 
   // Constants
 
-  private static final String TAG = FidoKeystoreAndroidM.class.getSimpleName();
+  private static final String LOG_TAG = FidoKeystoreAndroidM.class.getSimpleName();
+
   private static final int KEY_TIMEOUT_SECS = 60;
+  private static final String KEYSTORE_NAME = "AndroidKeyStore";
 
   // Variables
 
   private FingerprintManager mFingerprintManager;
 
-  // Life
+  // Public
 
-  FidoKeystoreAndroidM(FingerprintManager fingerprintManager) {
-    mFingerprintManager = fingerprintManager;
+  public static FidoKeystoreAndroidM createKeyStore(Activity activity) {
+    FingerprintManager manager = activity.getSystemService(FingerprintManager.class);
+
+    return new FidoKeystoreAndroidM(manager);
   }
 
-  @Override
-  public KeyPair generateKeyPair(String username) {
+  public KeyPair generateKeyPair(String accountAddress) {
+    Log.e(LOG_TAG, "GENERATE: " + accountAddress);
     try {
-      String keyId = getKeyId(username);
-      KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore");
+      String keyId = getKeyId(accountAddress);
+      KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, KEYSTORE_NAME);
       KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(keyId, KeyProperties.PURPOSE_SIGN)
           .setAlgorithmParameterSpec(new ECGenParameterSpec("secp256r1"))
           .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384, KeyProperties.DIGEST_SHA512)
@@ -55,32 +60,23 @@ public class FidoKeystoreAndroidM extends FidoKeystore {
 
       keyPairGenerator.initialize(builder.build());
 
-      return keyPairGenerator.generateKeyPair();
+      KeyPair keyPair = keyPairGenerator.generateKeyPair();
+      Log.d(LOG_TAG, "GEN KEYPAIR: " + keyPair);
+      KeyStore keyStore = getAndroidKeyStore();
+      X509Certificate cert = (X509Certificate) keyStore.getCertificate(keyId);
+      Log.d(LOG_TAG, "GEN CERT: " + cert);
+
+      return keyPair;
     } catch (GeneralSecurityException e) {
+      Log.e(LOG_TAG, "EXCEPTION: " + e.getMessage());
       throw new RuntimeException(e);
     }
   }
 
-  @Override
-  public PublicKey getPublicKey(String accountAddress) {
-    return getCertificate(accountAddress).getPublicKey();
-  }
-
-  @Override
-  public X509Certificate getCertificate(String accountAddress) {
+  public FidoSigner getSigner(String accountAddress) {
     try {
-      String key = getKeyId(accountAddress);
-
-      return (X509Certificate) getAndroidKeyStore().getCertificate(key);
-    } catch (KeyStoreException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  @Override
-  public FidoSigner getSigner(String username) {
-    try {
-      PrivateKey privateKey = (PrivateKey) getAndroidKeyStore().getKey(getKeyId(username), null);
+      String keyId = getKeyId(accountAddress);
+      PrivateKey privateKey = (PrivateKey) getAndroidKeyStore().getKey(keyId, null);
       Signature signature = Signature.getInstance("SHA256withECDSA");
       signature.initSign(privateKey);
 
@@ -90,12 +86,10 @@ public class FidoKeystoreAndroidM extends FidoKeystore {
     }
   }
 
-  // Public
-
-  public KeyPair getKeyPair(String username) {
+  public KeyPair getKeyPair(String accountAddress) {
     try {
-      PublicKey pubKey = getPublicKey(username);
-      PrivateKey privKey = (PrivateKey) getAndroidKeyStore().getKey(getKeyId(username), null);
+      PublicKey pubKey = getPublicKey(accountAddress);
+      PrivateKey privKey = (PrivateKey) getAndroidKeyStore().getKey(getKeyId(accountAddress), null);
 
       return new KeyPair(pubKey, privKey);
     } catch (GeneralSecurityException e) {
@@ -105,17 +99,38 @@ public class FidoKeystoreAndroidM extends FidoKeystore {
 
   // Private
 
+  private FidoKeystoreAndroidM(FingerprintManager fingerprintManager) {
+    mFingerprintManager = fingerprintManager;
+  }
+
+  private PublicKey getPublicKey(String accountAddress) {
+    return getCertificate(accountAddress).getPublicKey();
+  }
+
+  private X509Certificate getCertificate(String accountAddress) {
+    try {
+      Log.e(LOG_TAG, "AAAA: " + accountAddress);
+      String key = getKeyId(accountAddress);
+      Log.e(LOG_TAG, "BBBB: " + key);
+      Log.e(LOG_TAG, "CCCC: " + getAndroidKeyStore().toString());
+      Log.e(LOG_TAG, "DDDD: " + getAndroidKeyStore().getCertificate(key).toString());
+      return (X509Certificate) getAndroidKeyStore().getCertificate(key);
+    } catch (KeyStoreException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   private boolean isFingerprintAuthAvailable() {
     return mFingerprintManager.isHardwareDetected() && mFingerprintManager.hasEnrolledFingerprints();
   }
 
   private String getKeyId(String accountAddress) {
-    return "com.kimlic.keystore.key_" + accountAddress;
+    return "org.ebayopensource.fidouafclient.keystore.key_" + accountAddress;
   }
 
   private KeyStore getAndroidKeyStore() {
     try {
-      KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+      KeyStore keyStore = KeyStore.getInstance(KEYSTORE_NAME);
       keyStore.load(null);
 
       return keyStore;
