@@ -139,22 +139,22 @@ public class MainActivity extends Activity {
   }
 
   private void userReged(Intent data, StringBuilder extras) {
-//    Log.e(LOG_TAG, "OPTION 3");
-//    try {
-//      String uafMessage = data.getStringExtra("message");
-//      mMsgTextView.setText(uafMessage);
-//
-//      String res = mReg.clientSendRegResponse(uafMessage);
-//      setContentView(R.layout.activity_registered);
-//
-//      findFields();
-//
-//      mTitleTextView.setText(String.format("extras=%s", extras.toString()));
-//      mMsgTextView.setText(res);
-//      mEditTextName.setText(ACCOUNT_ADDRESS);
-//    } catch (Exception e) {
-//      mMsgTextView.setText(String.format("Registration operation failed.\n%s", e));
-//    }
+    Log.e(LOG_TAG, "OPTION 3");
+    try {
+      String uafMessage = data.getStringExtra("message");
+      mMsgTextView.setText(uafMessage);
+
+      String res = mReg.clientSendRegResponse(uafMessage, ACCOUNT_ADDRESS);
+      setContentView(R.layout.activity_registered);
+
+      findFields();
+
+      mTitleTextView.setText(String.format("extras=%s", extras.toString()));
+      mMsgTextView.setText(res);
+      mEditTextName.setText(ACCOUNT_ADDRESS);
+    } catch (Exception e) {
+      mMsgTextView.setText(String.format("Registration operation failed.\n%s", e));
+    }
   }
 
   private void userAuthed(Intent data) {

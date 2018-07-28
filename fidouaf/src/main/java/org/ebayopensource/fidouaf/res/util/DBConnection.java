@@ -113,7 +113,7 @@ public class DBConnection {
     }
 
     private String prepareInsertRegistrationRecord(RegistrationRecord rr) {
-        return String.format(
+        String query =  String.format(
                 "INSERT INTO rp_uaf.registrations(\n" +
                         "authenticator_id, public_key, sign_counter, authenticator_version, \n" +
                         "tc_display_png_characteristics, account_address, user_id, device_id, \n" +
@@ -126,6 +126,9 @@ public class DBConnection {
                 rr.authenticator_id, rr.PublicKey, rr.SignCounter, rr.AuthenticatorVersion, 
                 rr.tcDisplayPNGCharacteristics, rr.account_address, rr.userId, rr.deviceId, rr.timeStamp,
                 rr.status, rr.attestCert, rr.attestDataToSign, rr.attestSignature, rr.attestVerifiedStatus);
+
+        System.out.println("QUEYR: " + query);
+        return query;
     }
 
     private String prepareGetRecordByKeyAndAAID(String key, String aaid) {
