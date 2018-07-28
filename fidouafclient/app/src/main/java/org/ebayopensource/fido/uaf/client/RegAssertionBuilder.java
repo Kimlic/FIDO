@@ -208,7 +208,7 @@ public class RegAssertionBuilder {
 
   private byte[] getKeyId() throws IOException {
     ByteArrayOutputStream byteout = new ByteArrayOutputStream();
-    String keyId = "ebay-test-key-" + Base64url.encodeToString(BCrypt.gensalt().getBytes());
+    String keyId = "com.kimlic-" + Base64url.encodeToString(BCrypt.gensalt().getBytes());
     keyId = Base64url.encodeToString(keyId.getBytes());
     setSettings("keyId", keyId);
     byte[] value = keyId.getBytes();

@@ -21,12 +21,11 @@
     </ScrollView>
 
     <TextView
-        android:id="@+id/textUsername"
+        android:id="@+id/usernameTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/name"
-        android:layout_below="@+id/scrollView1"
-        />
+        android:layout_below="@+id/scrollView1"/>
 
     <TextView
         android:id="@+id/textToken"

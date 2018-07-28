@@ -36,6 +36,9 @@ import android.util.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 
 public class Reg {
@@ -85,7 +88,9 @@ public class Reg {
 
   public String clientSendRegResponse(String uafMessage, String accountAddress) {
     String serverResponse = OpUtils.clientSendRegResponse(uafMessage, Endpoints.URL_REG_RESPONSE, accountAddress);
+    Log.e(LOG_TAG, "REG RESPONSE:\n" + serverResponse);
     saveAAIDandKeyID(serverResponse);
+
     return serverResponse;
   }
 
@@ -108,12 +113,33 @@ public class Reg {
     return Curl.getInSeparateThread(url, accountAddress);
   }
 
+  private static JsonObject getServerResponseJson(String serverResponse) {
+    return (JsonObject) new JsonParser().parse(serverResponse);
+  }
+
+  private static JsonArray getResponseJson(JsonObject json) {
+    return json.getAsJsonObject("data").getAsJsonArray("response");
+  }
+
+  private static JsonObject getFirstRequestJson(JsonArray requestsJson) {
+    return (JsonObject) requestsJson.get(0);
+  }
+
+  private static JsonObject getAuthenticatorJson(JsonObject requestJson) {
+    return requestJson.getAsJsonObject("authenticator");
+  }
+
   private void saveAAIDandKeyID(String res) {
     try {
-      JSONArray regRecord = new JSONArray(res);
-      JSONObject authenticator = regRecord.getJSONObject(0).getJSONObject("authenticator");
-      setSettings("AAID", authenticator.getString("AAID"));
-      setSettings("keyID", authenticator.getString("KeyID"));
+      JsonObject responseObject = getServerResponseJson(res);
+      JsonArray responsesJson = getResponseJson(responseObject);
+      JsonObject responseJson = getFirstRequestJson(responsesJson);
+      JsonObject authenticatorJson = getAuthenticatorJson(responseJson);
+      String aaid = authenticatorJson.get("AAID").getAsString();
+      String keyId = authenticatorJson.get("KeyID").getAsString();
+      Log.e(LOG_TAG, "AAID: " + aaid + ",   KEYID: " + keyId);
+      setSettings("AAID", aaid);
+      setSettings("keyID", keyId);
     } catch (Exception e) {
       e.printStackTrace();
     }

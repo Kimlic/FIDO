@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
   private TextView mTitleTextView;
   private TextView mFacetTextView;
   private EditText mEditTextName;
+  private TextView mUsernameTextView;
 
   private Reg mReg;
   private Dereg mDereg;
@@ -197,10 +198,16 @@ public class MainActivity extends Activity {
   // Actions
 
   public void assignUserAddress() {
-    mEditTextName.setText(ACCOUNT_ADDRESS);
+    if (mEditTextName != null)
+      mEditTextName.setText(ACCOUNT_ADDRESS);
+    else
+      mUsernameTextView.setText(ACCOUNT_ADDRESS);
   }
 
   public void assignFacetId() {
+    if (mFacetTextView == null)
+      return;
+
     String facetId = UafService.getFacetID(this);
     mFacetTextView.setText(facetId);
   }
@@ -306,10 +313,11 @@ public class MainActivity extends Activity {
   }
 
   private void findFields() {
-    mMsgTextView = (TextView) findViewById(R.id.textViewMsg);
-    mTitleTextView = (TextView) findViewById(R.id.textViewTitle);
-    mEditTextName = (EditText) findViewById(R.id.editTextName);
-    mFacetTextView = (TextView) findViewById(R.id.textViewFacetID);
+    mMsgTextView = findViewById(R.id.textViewMsg);
+    mTitleTextView = findViewById(R.id.textViewTitle);
+    mEditTextName = findViewById(R.id.editTextName);
+    mFacetTextView = findViewById(R.id.textViewFacetID);
+    mUsernameTextView = findViewById(R.id.usernameTextView);
   }
 
   private void setSettings(String paramName, String paramValue) {
